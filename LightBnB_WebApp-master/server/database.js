@@ -36,9 +36,7 @@ const getUserWithEmail = function (email) {
       return null;
     });
 };
-getUserWithEmail('test2@example.com').then((result) => {
-  console.log(result);
-});
+
 exports.getUserWithEmail = getUserWithEmail;
 
 /**
@@ -82,11 +80,11 @@ const addUser = function (name, email, password) {
   return pool
     .query(queryString, queryValues)
     .then((result) => {
-      console.log("User added:", result.rows[0]);
-      return result.rows[0];
+      console.log("User properties", result.rows);
+      return result.rows;
     })
     .catch((err) => {
-      console.error("Error adding user", err.message);
+      console.error("Error:", err.message);
       return null;
     });
 };
@@ -101,8 +99,46 @@ exports.addUser = addUser;
  * @return {Promise<[{}]>} A promise to the reservations.
  */
 const getAllReservations = function (guest_id, limit = 10) {
-  return getAllProperties(null, 2);
+ const queryString = `SELECT reservations.*, properties.*,  AVG(property_reviews.rating) AS average_rating
+  FROM reservations
+  JOIN properties ON reservations.property_id = properties.id
+  JOIN property_reviews ON properties.id = property_reviews.property_id
+  WHERE reservations.guest_id = $1
+  GROUP BY properties.id, reservations.id
+  ORDER BY reservations.start_date DESC
+  LIMIT $2;`;
+
+  const queryValues = [guest_id, limit];
+
+  return pool
+  .query(queryString, queryValues)
+  .then((result) => {
+    if (result.rows.length > 0) {
+      console.log("Reservations for guest with id:", guest_id);
+      return result.rows;
+    } else {
+      console.log("No reservations found for guest with id:", guest_id);
+      return null;
+    }
+  })
+  .catch((err) => {
+    console.error("Error getting reservations for guest with id:", guest_id, err.message);
+    return null;
+  });
 };
+
+
+// getAllReservations(10)
+//   .then((result) => {
+//     if (result) {
+//       console.log("Reservations found:", result);
+//     } else {
+//       console.log("No reservations found");
+//     }
+//   })
+//   .catch((err) => {
+//     console.error("Error getting reservations:", err.message);
+//   });
 exports.getAllReservations = getAllReservations;
 
 /// Properties
